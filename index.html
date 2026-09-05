@@ -197,3 +197,234 @@ button{
 
 let ws=null;
 let data=[]
+const MAX_DATA = 100;
+
+function start(){
+  stop();
+
+  const market = document.getElementById("market").value;
+
+  document.getElementById("status").textContent =
+    "🟡 Connecting...";
+
+  ws = new WebSocket(
+    "wss://ws.derivws.com/websockets/v3?app_id=1089"
+  );
+
+  ws.onopen = function(){
+    document.getElementById("status").textContent =
+      "🟢 Connected — Analyzing " + market;
+
+    ws.send(JSON.stringify({
+      ticks: market,
+      subscribe: 1
+    }));
+  };
+
+  ws.onmessage = function(event){
+    const msg = JSON.parse(event.data);
+
+    if(!msg.tick) return;
+
+    const quote = String(msg.tick.quote);
+
+    const clean = quote.replace(".", "");
+    const digit = Number(clean.slice(-1));
+
+    if(isNaN(digit)) return;
+
+    data.push(digit);
+
+    if(data.length > MAX_DATA){
+      data.shift();
+    }
+
+    update();
+  };
+
+  ws.onerror = function(){
+    document.getElementById("status").textContent =
+      "🔴 Connection Error";
+  };
+
+  ws.onclose = function(){
+    document.getElementById("status").textContent =
+      "🔴 Disconnected";
+  };
+}
+
+function stop(){
+  if(ws){
+    ws.close();
+    ws = null;
+  }
+
+  document.getElementById("status").textContent =
+    "🔴 Disconnected";
+}
+
+function update(){
+
+  const total = data.length;
+
+  document.getElementById("ticks").textContent = total;
+
+  if(total === 0) return;
+
+  const last = data[data.length - 1];
+
+  document.getElementById("last").textContent = last;
+
+  let evenCount = 0;
+  let oddCount = 0;
+
+  data.forEach(d => {
+    if(d % 2 === 0){
+      evenCount++;
+    }else{
+      oddCount++;
+    }
+  });
+
+  const evenPercent =
+    Math.round((evenCount / total) * 100);
+
+  const oddPercent =
+    Math.round((oddCount / total) * 100);
+
+  document.getElementById("even").textContent =
+    evenPercent + "%";
+
+  document.getElementById("odd").textContent =
+    oddPercent + "%";
+
+  let signal = "WAITING";
+
+  if(total >= 10){
+
+    if(evenPercent > oddPercent){
+      signal = "EVEN";
+    }
+
+    if(oddPercent > evenPercent){
+      signal = "ODD";
+    }
+
+    if(evenPercent === oddPercent){
+      signal = "NEUTRAL";
+    }
+  }
+
+  document.getElementById("signal").textContent = signal;
+
+  analyze();
+  showDigits();
+  showFrequency();
+}
+
+function analyze(){
+
+  const target =
+    Number(document.getElementById("target").value);
+
+  const total = data.length;
+
+  if(total === 0){
+    document.getElementById("matches").textContent = "0%";
+    document.getElementById("differs").textContent = "0%";
+    return;
+  }
+
+  let matches = 0;
+
+  data.forEach(d => {
+    if(d === target){
+      matches++;
+    }
+  });
+
+  const matchPercent =
+    Math.round((matches / total) * 100);
+
+  const differPercent =
+    100 - matchPercent;
+
+  document.getElementById("matches").textContent =
+    matchPercent + "%";
+
+  document.getElementById("differs").textContent =
+    differPercent + "%";
+}
+
+function showDigits(){
+
+  const box =
+    document.getElementById("digits");
+
+  box.innerHTML = "";
+
+  const recent =
+    data.slice(-30).reverse();
+
+  recent.forEach(d => {
+
+    const span =
+      document.createElement("div");
+
+    span.className = "digit";
+
+    span.textContent = d;
+
+    box.appendChild(span);
+  });
+}
+
+function showFrequency(){
+
+  const box =
+    document.getElementById("frequency");
+
+  box.innerHTML = "";
+
+  const counts = [
+    0,0,0,0,0,
+    0,0,0,0,0
+  ];
+
+  data.forEach(d => {
+    counts[d]++;
+  });
+
+  const total = data.length;
+
+  for(let i = 0; i <= 9; i++){
+
+    const percent =
+      total === 0
+      ? 0
+      : Math.round((counts[i] / total) * 100);
+
+    const row =
+      document.createElement("div");
+
+    row.className = "row";
+
+    row.innerHTML =
+      "<span>Digit " + i + "</span>" +
+      "<span>" + counts[i] +
+      " (" + percent + "%)</span>";
+
+    box.appendChild(row);
+  }
+}
+
+function resetData(){
+
+  data = [];
+
+  update();
+}
+</script>
+
+</body>
+</html>
