@@ -417,7 +417,38 @@ function showFrequency(){
     box.appendChild(row);
   }
 }
+function matchDifferSignal(){
 
+  const target =
+    Number(document.getElementById("target").value);
+
+  const total = data.length;
+
+  if(total < 20){
+    return "WAIT";
+  }
+
+  let matches = 0;
+
+  data.forEach(d => {
+    if(d === target){
+      matches++;
+    }
+  });
+
+  const percent =
+    (matches / total) * 100;
+
+  if(percent >= 15){
+    return "MATCH";
+  }
+
+  if(percent <= 5){
+    return "DIFFER";
+  }
+
+  return "WAIT";
+                }
 function resetData(){
 
   data = [];
